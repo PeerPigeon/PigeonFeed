@@ -1,10 +1,15 @@
 <template>
   <!-- Writing a post, or a reply to one: text, and up to four pictures or videos. -->
-  <form class="composer" :class="{ small: !!re }" @submit.prevent="send">
+  <form
+    class="composer" :class="{ small: !!re, dropping }" @submit.prevent="send"
+    @dragenter.prevent="dragIn" @dragover.prevent="dragIn" @dragleave="dragOut" @drop.prevent="drop"
+  >
     <textarea
       v-model="text" :rows="re ? 2 : 3" :maxlength="MAX_TEXT" :placeholder="re ? 'Write a reply' : 'What is happening?'"
       :aria-label="re ? 'Your reply' : 'Your post'" @keydown.enter.meta.prevent="send" @keydown.enter.ctrl.prevent="send"
+      @paste="paste"
     ></textarea>
+    <p v-if="dropping" class="drop-hint">Drop pictures or videos to add them</p>
     <ul v-if="files.length" class="files">
       <li v-for="(f, i) in files" :key="i">
         <span class="file-name">{{ f.name }}</span>
@@ -45,11 +50,48 @@ watch([text, files], () => {
   else delete document.documentElement.dataset.writing
 }, { deep: true })
 
+/** Pictures and videos added, from the picker, a paste or a drop: up to MAX_MEDIA. */
+const add = (list: File[]) => {
+  const media = list.filter((f) => f.type.startsWith('image/') || f.type.startsWith('video/'))
+  if (!media.length) { if (list.length) error.value = 'Only pictures and videos can be added.'; return false }
+  if (busy.value) return true
+  if (files.value.length + media.length > MAX_MEDIA) error.value = `Up to ${MAX_MEDIA} pictures or videos in a post.`
+  else error.value = ''
+  // A pasted picture is "image.png" every time: a name of its own, to tell them apart.
+  let n = files.value.length
+  const named = media.map((f) => (/^image\.\w+$/.test(f.name) ? new File([f], `Pasted picture ${++n}.${f.name.split('.').pop()}`, { type: f.type }) : (n++, f)))
+  files.value = [...files.value, ...named].slice(0, MAX_MEDIA)
+  return true
+}
+
 const pick = (e: Event) => {
   const input = e.target as HTMLInputElement
-  files.value = [...files.value, ...Array.from(input.files ?? [])].slice(0, MAX_MEDIA)
+  add(Array.from(input.files ?? []))
   input.value = ''
-  error.value = ''
+}
+
+// Pasted (right-click Paste, or Cmd/Ctrl+V): pictures in it are added; its text goes in as text.
+const paste = (e: ClipboardEvent) => {
+  const list = Array.from(e.clipboardData?.files ?? [])
+  if (!list.length) return
+  const hasText = !!e.clipboardData?.getData('text/plain')
+  if (add(list) && !hasText) e.preventDefault()
+}
+
+// Dragged onto the box: outlined while over it, added when dropped.
+const dropping = ref(false)
+let depth = 0
+const dragIn = (e: DragEvent) => {
+  if (!Array.from(e.dataTransfer?.types ?? []).includes('Files')) return
+  if (e.type === 'dragenter') depth++
+  dropping.value = true
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+}
+const dragOut = () => { depth = Math.max(0, depth - 1); if (!depth) dropping.value = false }
+const drop = (e: DragEvent) => {
+  depth = 0
+  dropping.value = false
+  add(Array.from(e.dataTransfer?.files ?? []))
 }
 
 const send = async () => {
@@ -76,7 +118,9 @@ const send = async () => {
 </script>
 
 <style scoped>
-.composer { display: flex; flex-direction: column; gap: 0.5rem; }
+.composer { display: flex; flex-direction: column; gap: 0.5rem; border-radius: var(--radius, 8px); }
+.composer.dropping { outline: 2px dashed var(--sheen); outline-offset: 4px; }
+.drop-hint { font-size: 0.85rem; color: var(--sheen); }
 .composer textarea { resize: vertical; min-height: 4.5rem; }
 .composer.small textarea { min-height: 3rem; }
 .composer-row { display: flex; align-items: center; gap: 0.5rem; }

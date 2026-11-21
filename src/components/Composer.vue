@@ -4,18 +4,22 @@
     class="composer" :class="{ small: !!re, dropping }" @submit.prevent="send"
     @dragenter.prevent="dragIn" @dragover.prevent="dragIn" @dragleave="dragOut" @drop.prevent="drop"
   >
-    <textarea
-      v-model="text" :rows="re ? 2 : 3" :maxlength="MAX_TEXT" :placeholder="re ? 'Write a reply' : 'What is happening?'"
-      :aria-label="re ? 'Your reply' : 'Your post'" @keydown.enter.meta.prevent="send" @keydown.enter.ctrl.prevent="send"
-      @paste="paste"
-    ></textarea>
+    <!-- The post as it will look: the text, and under it the pictures and videos, in the same box. -->
+    <div class="box" :class="{ filled: files.length }">
+      <textarea
+        v-model="text" :rows="re ? 2 : 3" :maxlength="MAX_TEXT" :placeholder="re ? 'Write a reply' : 'What is happening?'"
+        :aria-label="re ? 'Your reply' : 'Your post'" @keydown.enter.meta.prevent="send" @keydown.enter.ctrl.prevent="send"
+        @paste="paste"
+      ></textarea>
+      <ul v-if="files.length" class="previews" :class="`n${files.length}`">
+        <li v-for="(f, i) in files" :key="previews[i]">
+          <video v-if="f.type.startsWith('video/')" :src="previews[i]" muted playsinline preload="metadata"></video>
+          <img v-else :src="previews[i]" :alt="f.name" />
+          <button type="button" class="remove" :disabled="busy" :aria-label="`Remove ${f.name}`" @click="files.splice(i, 1)">×</button>
+        </li>
+      </ul>
+    </div>
     <p v-if="dropping" class="drop-hint">Drop pictures or videos to add them</p>
-    <ul v-if="files.length" class="files">
-      <li v-for="(f, i) in files" :key="i">
-        <span class="file-name">{{ f.name }}</span>
-        <button type="button" class="btn btn-quiet" :disabled="busy" :aria-label="`Remove ${f.name}`" @click="files.splice(i, 1)">Remove</button>
-      </li>
-    </ul>
     <p v-if="error" class="alert" role="alert">{{ error }}</p>
     <div class="composer-row">
       <label class="btn btn-quiet attach" :class="{ off: busy || files.length >= MAX_MEDIA }">
@@ -29,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { post } from '@/composables/useFeed'
 import { blobs } from '@/composables/useMesh'
 import { prepare, upload } from '@/utils/media'
@@ -43,6 +47,15 @@ const files = ref<File[]>([])
 const busy = ref(false)
 const progress = ref('Posting')
 const error = ref('')
+
+// A preview (an object URL) for each file, made once per file and let go when it leaves.
+const urls = new Map<File, string>()
+const previews = ref<string[]>([])
+watch(files, (now) => {
+  for (const [f, u] of urls) if (!now.includes(f)) { URL.revokeObjectURL(u); urls.delete(f) }
+  previews.value = now.map((f) => { let u = urls.get(f); if (!u) { u = URL.createObjectURL(f); urls.set(f, u) } return u })
+}, { deep: true })
+onBeforeUnmount(() => { for (const u of urls.values()) URL.revokeObjectURL(u); urls.clear() })
 
 // A page with something being written does not reload itself for a new build (main.ts).
 watch([text, files], () => {
@@ -121,8 +134,20 @@ const send = async () => {
 .composer { display: flex; flex-direction: column; gap: 0.5rem; border-radius: var(--radius, 8px); }
 .composer.dropping { outline: 2px dashed var(--sheen); outline-offset: 4px; }
 .drop-hint { font-size: 0.85rem; color: var(--sheen); }
-.composer textarea { resize: vertical; min-height: 4.5rem; }
-.composer.small textarea { min-height: 3rem; }
+.box { display: flex; flex-direction: column; border: 1px solid var(--line-strong, #3a4150); border-radius: var(--radius, 8px); background: var(--surface, transparent); }
+.box:focus-within { border-color: var(--sheen); }
+.box textarea { resize: vertical; min-height: 4.5rem; border: none; background: transparent; outline: none; box-shadow: none; }
+.composer.small .box textarea { min-height: 3rem; }
+.previews { list-style: none; display: grid; gap: 0.35rem; padding: 0 0.6rem 0.6rem; margin: 0; }
+.previews.n1 { grid-template-columns: 1fr; }
+.previews.n2, .previews.n4 { grid-template-columns: 1fr 1fr; }
+.previews.n3 { grid-template-columns: 1fr 1fr 1fr; }
+.previews li { position: relative; border-radius: calc(var(--radius, 8px) - 2px); overflow: hidden; background: #0003; }
+.previews img, .previews video { display: block; width: 100%; height: 100%; max-height: 22rem; object-fit: cover; }
+.previews.n1 img, .previews.n1 video { object-fit: contain; height: auto; }
+.previews:not(.n1) li { aspect-ratio: 1 / 1; }
+.remove { position: absolute; top: 0.35rem; right: 0.35rem; width: 1.8rem; height: 1.8rem; border-radius: 50%; border: none; background: #000b; color: #fff; font-size: 1.15rem; line-height: 1; cursor: pointer; }
+.remove:hover:not(:disabled) { background: #000e; }
 .composer-row { display: flex; align-items: center; gap: 0.5rem; }
 .attach { cursor: pointer; margin-left: -0.5rem; }
 .attach.off { opacity: 0.45; cursor: not-allowed; }
@@ -131,7 +156,5 @@ const send = async () => {
 .count { margin-left: auto; font-size: 0.8rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .count.near { color: var(--stop); }
 .count + .btn { margin-left: 0; }
-.files { list-style: none; display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
-.files li { display: flex; align-items: center; gap: 0.5rem; }
-.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
 </style>

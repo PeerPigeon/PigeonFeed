@@ -20,6 +20,9 @@ declare module 'unsea' {
   export function decryptMessageWithMeta(payload: unknown, privOrPair: string | KeyPair): Promise<string>
   export function saveKeys(name: string, keys: KeyPair, password?: string | null, options?: object): Promise<unknown>
   export function loadKeys(name: string, password?: string | null, options?: object): Promise<KeyPair | undefined>
+  /** WebCrypto's SubtleCrypto, or unsea's stand-in on a page without one (plain http). */
+  export function getSubtle(): SubtleCrypto
+  export function hasNativeSubtle(): boolean
 }
 
 declare module 'pigeonidp/records' {

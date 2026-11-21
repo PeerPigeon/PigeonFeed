@@ -4,6 +4,7 @@
  * every reader). A post names its pieces in order; a file of many pieces names one more piece that lists
  * them. Nothing here is encrypted to anyone: a post's media is as public as the post.
  */
+import { getSubtle } from 'unsea'
 import type { MediaRef } from './records'
 
 /** Bytes in a piece: under a blob's most (160 kB, PeerPigeon's MAX_BLOB_BYTES). */
@@ -24,7 +25,8 @@ export interface BlobStore {
 }
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as BufferSource))
+  // unsea's SubtleCrypto: WebCrypto's, or its stand-in on a page without one (plain http).
+  const digest = new Uint8Array(await getSubtle().digest('SHA-256', bytes as BufferSource))
   return Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 

@@ -17,8 +17,10 @@ import { browserKeys, publicGet, publicPut, relayRequest, signAs, type Keys } fr
 const NAMESPACE = 'pigeon-chess'
 const meshKey = (alias: string) => `account:${aliasKey(alias)}:${NAMESPACE}`
 
-// Staying signed in on this device until logging out: the account's keys, encrypted with an AES key the
-// browser keeps and will not hand out (non-extractable), both in IndexedDB.
+// Staying signed in on this device until logging out: the account's keys, encrypted with an AES key kept
+// in IndexedDB beside them. On a secure page (https, localhost) that key is the browser's own and will not
+// be handed out (non-extractable). On a plain-http page there is no WebCrypto, so the key is kept as bytes
+// and used with unsea's stand-in: weaker, but such a page can be changed in transit anyway.
 const SESSION_DB = 'pigeonfeed-session'
 const openDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
   const req = indexedDB.open(SESSION_DB, 1)
@@ -37,21 +39,30 @@ const idb = async <T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => 
   } finally { db.close() }
 }
 const deviceKey = async (): Promise<CryptoKey> => {
-  const kept = await idb<CryptoKey | undefined>('readonly', (s) => s.get('device-key'))
-  if (kept) return kept
-  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
-  await idb('readwrite', (s) => s.put(key, 'device-key'))
-  return key
+  const subtle = unsea.getSubtle()
+  if (unsea.hasNativeSubtle()) {
+    const kept = await idb<CryptoKey | undefined>('readonly', (s) => s.get('device-key'))
+    if (kept) return kept
+    const key = await subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']) as CryptoKey
+    await idb('readwrite', (s) => s.put(key, 'device-key'))
+    return key
+  }
+  let raw = await idb<Uint8Array | undefined>('readonly', (s) => s.get('device-key-bytes'))
+  if (!raw) {
+    raw = crypto.getRandomValues(new Uint8Array(32))
+    await idb('readwrite', (s) => s.put(raw, 'device-key-bytes'))
+  }
+  return subtle.importKey('raw', raw as BufferSource, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
 }
 async function keepSession(session: { alias: string; keys: Keys }): Promise<void> {
   const iv = crypto.getRandomValues(new Uint8Array(12))
-  const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await deviceKey(), new TextEncoder().encode(JSON.stringify(session)))
+  const data = await unsea.getSubtle().encrypt({ name: 'AES-GCM', iv }, await deviceKey(), new TextEncoder().encode(JSON.stringify(session)))
   await idb('readwrite', (s) => s.put({ iv, data }, 'session'))
 }
 async function keptSession(): Promise<{ alias: string; keys: Keys } | null> {
   const kept = await idb<{ iv: Uint8Array; data: ArrayBuffer } | undefined>('readonly', (s) => s.get('session'))
   if (!kept) return null
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: kept.iv as BufferSource }, await deviceKey(), kept.data)
+  const plain = await unsea.getSubtle().decrypt({ name: 'AES-GCM', iv: kept.iv as BufferSource }, await deviceKey(), kept.data)
   return JSON.parse(new TextDecoder().decode(plain))
 }
 

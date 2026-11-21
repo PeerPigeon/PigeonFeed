@@ -10,6 +10,19 @@ import type { BlobStore } from '@/utils/media'
 
 export const DEFAULT_SIGNALING_URLS = ['wss://peer.ooo/ws']
 
+/**
+ * The relays to start from: ?signal=<ws url>[,<ws url>…] in the page's address (a local relay, say), else
+ * the default. A local relay is ws://<its host>:8788/ws.
+ */
+export function signalingUrls(): string[] {
+  try {
+    const asked = new URLSearchParams(location.search).get('signal')
+    const urls = (asked ?? '').split(',').map((u) => u.trim()).filter((u) => /^wss?:\/\//.test(u))
+    if (urls.length) return urls
+  } catch { /* no address: the default */ }
+  return DEFAULT_SIGNALING_URLS
+}
+
 export type Keys = PeerPigeonKeyPair
 
 const connected = ref(false)
@@ -37,15 +50,15 @@ const refresh = () => {
 }
 
 /** Start the node (once) on the given relays; the first is the bootstrap, freertc then picks the room's. */
-export function startMesh(network = 'global', signalingUrls: string[] = DEFAULT_SIGNALING_URLS): Promise<void> {
+export function startMesh(network = 'global', urls: string[] = signalingUrls()): Promise<void> {
   if (started) return started
   starting.value = true
   error.value = null
   const n = new PeerPigeonNode({
     networkId: 'pigeonfeed',
     sessionId: network || 'global',
-    signalingServer: signalingUrls[0],
-    signalingServers: signalingUrls.slice(1),
+    signalingServer: urls[0],
+    signalingServers: urls.slice(1),
     automaticSignalingServer: true,
     minPeers: 2,
     maxPeers: 10,

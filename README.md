@@ -16,14 +16,16 @@ It looks like the rest of the family too: Vue 3, the Archivo typeface, and Pigeo
 
 ```bash
 npm install
-npm run dev        # http://localhost:5174
+npm run dev        # https://localhost:5173 (and https://<this machine's IP>:5173 on the LAN)
 npm test           # the record and media rules
 npm run typecheck
 npm run build
 npm run deploy     # builds, then uploads dist/ to Cloudflare (wrangler.jsonc)
 ```
 
-By default a page joins the relay at `wss://peer.ooo/ws` and the room `pigeonfeed` / `global`.
+By default a page joins the relay at `wss://peer.ooo/ws` and the room `pigeonfeed` / `global`. To use other relays, such as a local freertc relay, add them to the address: `?signal=ws://192.168.1.20:8788/ws` (several, separated by commas).
+
+It also works on a plain-http page (a build served at a LAN address, say). Browsers leave out `crypto.subtle` there, and the stack then uses unsea's stand-in on noble for hashing, key derivation and AES-GCM, with the same results.
 
 ## How it works
 

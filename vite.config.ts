@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import { resolve } from 'path'
 import { execSync } from 'child_process'
 import { readFileSync } from 'fs'
@@ -17,8 +18,10 @@ const pinned = (name: string): string | null => {
 }
 const build = `${commit} (PeerPigeon ${pinned('peerpigeon') ?? '?'}, freertc ${pinned('freertc') ?? '?'}), ${builtAt}`
 
-export default defineConfig({
-  plugins: [vue(), {
+export default defineConfig(({ command }) => ({
+  // The dev server over https (a certificate of its own, accepted once in the browser): the crypto PeerPigeon,
+  // unsea and PigeonIdP use is only given to secure pages, and a phone on the LAN reaches the page by its IP.
+  plugins: [vue(), ...(command === 'serve' ? [basicSsl()] : []), {
     // version.json names the build; open pages compare it with their own and
     // reload when a newer one is out (src/main.ts).
     name: 'build-version',
@@ -28,9 +31,9 @@ export default defineConfig({
   }],
   define: { __BUILD__: JSON.stringify(build) },
   resolve: { alias: { '@': resolve(__dirname, './src') } },
-  server: { port: 5174, host: true },
+  server: { port: 5173, host: true },
   build: {
     chunkSizeWarningLimit: 1000,
     rollupOptions: { output: { manualChunks: { 'vue-core': ['vue'] } } },
   },
-})
+}))

@@ -22,9 +22,9 @@
     <p v-if="dropping" class="drop-hint">Drop pictures or videos to add them</p>
     <p v-if="error" class="alert" role="alert">{{ error }}</p>
     <div class="composer-row">
-      <label class="btn btn-quiet attach" :class="{ off: busy || files.length >= MAX_MEDIA }">
-        <input type="file" accept="image/*,video/*" multiple :disabled="busy || files.length >= MAX_MEDIA" @change="pick" />
-        Add a picture or video
+      <label class="attach" :class="{ off: busy || files.length >= MAX_MEDIA }" title="Add a picture or video">
+        <input type="file" accept="image/*,video/*" multiple :disabled="busy || files.length >= MAX_MEDIA" aria-label="Add a picture or video" @change="pick" />
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </label>
       <span class="count" :class="{ near: text.length > MAX_TEXT - 100 }">{{ text.length > MAX_TEXT - 200 ? MAX_TEXT - text.length : '' }}</span>
       <button class="btn btn-go" type="submit" :disabled="busy || (!text.trim() && !files.length)">{{ busy ? progress : (re ? 'Reply' : 'Post') }}</button>
@@ -149,7 +149,9 @@ const send = async () => {
 .remove { position: absolute; top: 0.35rem; right: 0.35rem; width: 1.8rem; height: 1.8rem; border-radius: 50%; border: none; background: #000b; color: #fff; font-size: 1.15rem; line-height: 1; cursor: pointer; }
 .remove:hover:not(:disabled) { background: #000e; }
 .composer-row { display: flex; align-items: center; gap: 0.5rem; }
-.attach { cursor: pointer; margin-left: -0.5rem; }
+.attach { position: relative; display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--radius); color: var(--ink-2); cursor: pointer; }
+.attach:hover:not(.off) { color: var(--sheen); background: var(--wing); }
+.attach svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .attach.off { opacity: 0.45; cursor: not-allowed; }
 .attach input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .attach:focus-within { outline: 2px solid var(--sheen); outline-offset: 2px; }

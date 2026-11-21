@@ -1,78 +1,39 @@
 {
-  "name": "pigeonsocial",
-  "version": "0.0.1",
-  "description": "Login-less social network built on PeerPigeon",
-  "keywords": [
-    "peerpigeon",
-    "social",
-    "p2p",
-    "decentralization",
-    "pwa",
-    "mobile"
-  ],
-  "homepage": "https://github.com/draeder/PigeonSocial#readme",
-  "bugs": {
-    "url": "https://github.com/draeder/PigeonSocial/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/draeder/PigeonSocial.git"
-  },
-  "license": "ISC",
-  "author": "Daniel Raeder",
+  "name": "pigeonfeed",
+  "version": "1.0.0",
+  "description": "A P2P social feed on PeerPigeon and freertc",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "test": "vitest",
-    "android": "cap run android",
-    "ios": "cap run ios",
-    "sync": "cap sync",
-    "add:android": "cap add android",
-    "add:ios": "cap add ios"
+    "deploy": "vite build && npx wrangler@4 deploy",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "node --test --import tsx tests/*.test.ts"
   },
+  "keywords": [
+    "social",
+    "p2p",
+    "webrtc",
+    "peerpigeon",
+    "vue"
+  ],
+  "author": "Daniel Raeder",
+  "license": "ISC",
   "dependencies": {
-    "@capacitor/app": "^5.0.6",
-    "@capacitor/core": "^5.4.0",
-    "@capacitor/haptics": "^5.0.6",
-    "@capacitor/keyboard": "^5.0.6",
-    "@capacitor/preferences": "^5.0.6",
-    "@capacitor/splash-screen": "^5.0.6",
-    "@capacitor/status-bar": "^5.0.6",
-    "buffer": "^6.0.3",
-    "clsx": "^2.0.0",
-    "crypto-browserify": "^3.12.1",
-    "framer-motion": "^10.16.4",
-    "lucide-react": "^0.279.0",
-    "peerpigeon": "^0.1.1",
-    "process": "^0.11.10",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.15.0",
-    "stream-browserify": "^3.0.0",
-    "tailwind-merge": "^1.14.0",
-    "util": "^0.12.5",
-    "webtorrent": "^1.9.7"
+    "@fontsource-variable/archivo": "^5.3.0",
+    "freertc": "github:draeder/freertc#06752d1",
+    "peerpigeon": "https://codeload.github.com/PeerPigeon/PeerPigeon/tar.gz/4301efd15a51d42d6de430e024e0b44efe211566",
+    "pigeonidp": "https://codeload.github.com/PeerPigeon/PigeonIdP/tar.gz/953f1beaedb995c01dcd236246673af55372c8d0",
+    "unsea": "https://codeload.github.com/draeder/unsea/tar.gz/294cbf0fb1ae0dea4f43f533cfe02af4c3e361be",
+    "vue": "^3.5.22"
   },
   "devDependencies": {
-    "@capacitor/cli": "^5.4.0",
-    "@types/react": "^18.3.24",
-    "@types/react-dom": "^18.3.7",
-    "@types/webtorrent": "^0.110.1",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "@vitejs/plugin-react": "^4.0.3",
-    "autoprefixer": "^10.4.15",
-    "eslint": "^8.45.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.3",
-    "postcss": "^8.4.29",
-    "tailwindcss": "^3.3.3",
-    "typescript": "^5.0.2",
-    "vite": "^4.4.5",
-    "vite-plugin-pwa": "^0.16.4",
-    "vitest": "^0.34.0"
+    "@types/node": "^20.19.24",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vue-tsc": "^3.1.0"
   }
 }

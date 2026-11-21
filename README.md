@@ -1,158 +1,67 @@
-# PigeonSocial
+# PigeonFeed
 
-A login-less, decentralized social network built on PeerPigeon with modern UI for mobile and PWA capabilities.
+A peer-to-peer social feed in the browser: posts with pictures and video, likes and replies, friends, and private messages. There is no server of its own. It runs on the same stack as [PigeonChess](https://github.com/PeerPigeon/PigeonChess):
 
-## Features
+| Part | What it does here |
+| --- | --- |
+| [PeerPigeon](https://github.com/PeerPigeon/PeerPigeon) | The mesh between browsers, and its signed, synced storage |
+| [freertc](https://github.com/draeder/freertc) | The relays that introduce browsers to each other (signaling only) |
+| PigeonFS (PeerPigeon's storage servers) | Keeps the feed while nobody is online, and holds pictures and video |
+| [PigeonIdP](https://github.com/PeerPigeon/PigeonIdP) | Accounts: one name on every device. The same accounts as PigeonChess |
+| [unsea](https://github.com/draeder/unsea) | Keys, signatures and encryption (P-256 with ML-DSA-65 and ML-KEM-768) |
 
-- **No Login Required**: Uses cryptographic keypairs for identity management via PeerPigeon's UnSea module
-- **Decentralized**: Built on PeerPigeon for true peer-to-peer communication
-- **Mobile-First**: Responsive design optimized for iOS and Android
-- **PWA Ready**: Progressive Web App capabilities for offline usage
-- **Native Apps**: Can be deployed as native iOS/Android apps using Capacitor
+It looks like the rest of the family too: Vue 3, the Archivo typeface, and PigeonChess's stylesheet.
 
-## Tech Stack
+## Run it
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI**: Tailwind CSS + Framer Motion
-- **Mobile**: Capacitor for native deployment
-- **Backend**: PeerPigeon for decentralized storage and networking
-- **Identity**: UnSea module for cryptographic identity generation
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- For mobile development: Xcode (iOS) or Android Studio (Android)
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/draeder/PigeonSocial.git
-cd PigeonSocial
-```
-
-2. Install dependencies:
 ```bash
 npm install
-```
-
-3. Start the development server:
-```bash
-npm run dev
-```
-
-4. Open your browser to `http://localhost:3000`
-
-### First Time Setup
-
-When you first open the app:
-
-1. You'll see the welcome screen with features overview
-2. Click "Get Started" to create your identity
-3. Enter a username (required) and optional display name
-4. Your cryptographic keypair will be generated automatically
-5. Start posting and interacting!
-
-## Mobile Development
-
-### PWA (Progressive Web App)
-
-The app automatically works as a PWA. Users can:
-- Install it from their mobile browser
-- Use it offline (basic functionality)
-- Get native app-like experience
-
-### Native Apps
-
-To build native mobile apps:
-
-1. Build the web app:
-```bash
+npm run dev        # http://localhost:5174
+npm test           # the record and media rules
+npm run typecheck
 npm run build
+npm run deploy     # builds, then uploads dist/ to Cloudflare (wrangler.jsonc)
 ```
 
-2. Add mobile platforms:
-```bash
-npm run add:android  # For Android
-npm run add:ios      # For iOS
-```
+By default a page joins the relay at `wss://peer.ooo/ws` and the room `pigeonfeed` / `global`.
 
-3. Sync the web build with native projects:
-```bash
-npm run sync
-```
+## How it works
 
-4. Run on devices:
-```bash
-npm run android     # For Android
-npm run ios         # For iOS
-```
+Nobody has to sign in. A browser has keys of its own, kept between visits, and what it writes is signed with them. Signing in to an account makes what a person writes theirs on every device.
 
-## How It Works
+Everything a person does is one signed record in the room's storage (`src/utils/records.ts`). Every peer in the room keeps these records, and so do the storage servers:
 
-### Identity Management
+| Key | Record |
+| --- | --- |
+| `pf/p/<stamp>` | A post, or a reply to one |
+| `pf/l/<signer>/<post>` | A like |
+| `pf/u/<signer>` | A profile: a name, and the keys to write to that person privately |
+| `pf/f/<signer>/<other>` | A friend request. A request each way makes two people friends |
+| `pf/m/<a>~<b>/<stamp>` | A private message, encrypted to each of the two people |
 
-- No traditional signup/login process
-- Each user gets a cryptographic keypair on first use
-- Public key serves as the user ID
-- Private key stays local for signing messages
+A record counts only when the key that signed it is the one its key names, so nobody can like, befriend or describe themselves as someone else. A name shown without a key fragment is an account name, checked against the account's record.
 
-### Data Storage
+Pictures and video are cut into 128 kB pieces and kept on the storage servers by their SHA-256 (`src/utils/media.ts`). Pictures are made smaller before posting (1600 px on the longest side); a video can be up to 50 MB.
 
-- Uses PeerPigeon's persistent storage layer
-- Data is stored locally and synchronized peer-to-peer
-- No central servers required
-
-### Social Features
-
-Currently implemented:
-- ✅ User profile creation
-- ✅ Post creation and viewing
-- ✅ Like functionality
-- ✅ Real-time feed updates
-
-Planned features:
-- 🚧 Follow/unfollow users
-- 🚧 Reply to posts
-- 🚧 Image/media sharing
-- 🚧 Direct messaging
-- 🚧 Content discovery
-
-## Architecture
+## Layout
 
 ```
-├── src/
-│   ├── components/          # React components
-│   │   ├── WelcomeScreen.tsx    # First-time user onboarding
-│   │   ├── MainFeed.tsx         # Main social feed
-│   │   ├── PostCard.tsx         # Individual post display
-│   │   ├── CreatePost.tsx       # Post creation modal
-│   │   └── LoadingScreen.tsx    # Loading states
-│   ├── services/
-│   │   └── pigeonSocial.ts      # PeerPigeon integration
-│   ├── App.tsx             # Main app component
-│   ├── main.tsx            # App entry point
-│   └── index.css           # Global styles
-├── public/                 # Static assets
-├── capacitor.config.ts     # Capacitor configuration
-├── vite.config.ts         # Vite configuration
-└── tailwind.config.js     # Tailwind CSS configuration
+src/
+  App.vue                    the top bar and the three pages
+  components/                composer, post, media, friends, messages, account sheet
+  composables/useMesh.ts     the PeerPigeon node, its storage and the storage servers
+  composables/useIdentity.ts this browser's keys, and PigeonIdP accounts
+  composables/useFeed.ts     every record, and the views of them the pages show
+  utils/records.ts           what a record is and when it counts (tested)
+  utils/media.ts             files in pieces on the storage servers (tested)
+tests/                       node --test
 ```
 
-## Contributing
+## Known limits
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Signal Server
-
-The signal server integration will be added in the next iteration once the core UI and PeerPigeon integration is stable.
-
-## License
-
-ISC License - see LICENSE file for details
+- **Media and history need storage servers.** With none reachable, text posts still travel between the peers that are online, but pictures and video can't be posted.
+- **Private messages hide what was said, not who said it.** That two people wrote to each other, and when, is visible to everyone in the room.
+- **Deleting a post does not delete its media** from the storage servers.
+- **Keys of records are predictable**, and the first writer of a key owns it. Someone could write another person's profile, like or friend key first: their record would not count, but the real owner could not then write there.
+- **One room holds everything**, and every peer keeps all of it. That suits a small network, not a large one.
+- **Nothing from the earlier React version (PigeonSocial) carries over**: its identities, posts and friends used a different network and format.

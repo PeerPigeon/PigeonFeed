@@ -1,0 +1,13 @@
+{
+  "name": "PigeonFeed",
+  "short_name": "PigeonFeed",
+  "start_url": "/?source=home",
+  "display": "standalone",
+  "background_color": "#e8f6f9",
+  "theme_color": "#e8f6f9",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

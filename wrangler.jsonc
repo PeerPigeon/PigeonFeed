@@ -8,7 +8,7 @@
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
-  }
-  // To serve it on a domain of the peer.ooo zone, as chess.peer.ooo is:
-  // "routes": [{ "pattern": "feed.peer.ooo/*", "zone_name": "peer.ooo" }]
+  },
+  // On feed.peer.ooo (a proxied DNS record on the peer.ooo zone), as chess.peer.ooo is.
+  "routes": [{ "pattern": "feed.peer.ooo/*", "zone_name": "peer.ooo" }]
 }

@@ -49,9 +49,9 @@ function drop(key: string): void {
 export async function startFeed(s: PeerPigeonStorage): Promise<void> {
   unsubscribe?.()
   store = s
-  for (const r of await s.list('user').catch(() => [])) if (r.key.startsWith(FEED_KEYS)) take(r as Rec)
-  loaded.value = true
-  changed()
+  // Changes first, then what it holds: the list can wait some seconds on the storage servers, and a record
+  // that arrives meanwhile (from another browser, or the servers) is in neither if the listening starts
+  // after it. That left a new browser with posts in its storage and an empty feed until a reload.
   unsubscribe = s.subscribe((e) => {
     if (e.space !== 'user' || !e.key.startsWith(FEED_KEYS)) return
     if (e.op === 'delete') { drop(e.key); changed(); return }
@@ -61,6 +61,9 @@ export async function startFeed(s: PeerPigeonStorage): Promise<void> {
       if (rec && store === s && take(rec as Rec)) changed()
     })()
   })
+  for (const r of await s.list('user').catch(() => [])) if (store === s && r.key.startsWith(FEED_KEYS)) take(r as Rec)
+  loaded.value = true
+  changed()
   void publishProfile()
 }
 

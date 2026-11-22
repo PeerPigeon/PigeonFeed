@@ -24,6 +24,14 @@ export interface BlobStore {
   get(hash: string): Promise<Uint8Array | null>
 }
 
+/**
+ * A piece could not be had from the storage servers just now: they may not be reached yet (a page just
+ * opened), be restarting, or not hold it. Worth another try; nothing here says the file is gone.
+ */
+export class NotYet extends Error {
+  constructor() { super('The storage servers did not answer with this file.') }
+}
+
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   // unsea's SubtleCrypto: WebCrypto's, or its stand-in on a page without one (plain http).
   const digest = new Uint8Array(await getSubtle().digest('SHA-256', bytes as BufferSource))
@@ -80,7 +88,7 @@ export async function upload(store: BlobStore, bytes: Uint8Array, about: Pick<Me
 export async function chunksOf(store: BlobStore, ref: MediaRef): Promise<string[]> {
   if (ref.chunks) return ref.chunks
   const list = ref.list ? await store.get(ref.list) : null
-  if (!list) throw new Error('The storage servers no longer have this file.')
+  if (!list) throw new NotYet()
   const chunks = new TextDecoder().decode(list).split('\n').filter((h) => /^[0-9a-f]{64}$/.test(h))
   // What it lists must be about the size it says: a list can't make a reader fetch without end.
   if (!chunks.length || chunks.length > Math.ceil(ref.size / CHUNK) + 1) throw new Error('This file is not as its post describes it.')
@@ -93,7 +101,7 @@ export async function download(store: BlobStore, ref: MediaRef, progress?: (done
   let done = 0
   const pieces = await inLanes(chunks, 6, async (hash) => {
     const piece = await store.get(hash)
-    if (!piece) throw new Error('The storage servers no longer have all of this file.')
+    if (!piece) throw new NotYet()
     progress?.(++done / chunks.length)
     return piece
   })

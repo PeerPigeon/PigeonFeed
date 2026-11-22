@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CHUNK, INLINE_CHUNKS, chunksOf, cut, download, fit, sha256Hex, upload, type BlobStore } from '../src/utils/media.ts'
+import { CHUNK, INLINE_CHUNKS, NotYet, chunksOf, cut, download, fit, sha256Hex, upload, type BlobStore } from '../src/utils/media.ts'
 import { parseMedia } from '../src/utils/records.ts'
 import { withLinks } from '../src/utils/look.ts'
 
@@ -51,7 +51,7 @@ test('a file the servers have lost part of, or that is not the size its post say
   const ref = await upload(store, bytes, { kind: 'image', type: 'image/png' })
   await assert.rejects(download(store, { ...ref, size: ref.size + 1 }), /not as its post describes/)
   store.lose(ref.chunks![1])
-  await assert.rejects(download(store, ref), /no longer have/)
+  await assert.rejects(download(store, ref), NotYet)
 })
 
 test('no storage server: the upload says so', async () => {

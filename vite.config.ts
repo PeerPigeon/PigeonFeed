@@ -9,14 +9,15 @@ import { readFileSync } from 'fs'
 const commit = (() => { try { return execSync('git rev-parse --short HEAD').toString().trim() } catch { return 'dev' } })()
 // When it was built: the month and year only, in the site's own time zone.
 const builtAt = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'America/Chicago' })
-// The commits of the packages installed from GitHub, as the lockfile names them (shown with the build).
-const pinned = (name: string): string | null => {
+// The npm versions of the stack as installed, from the lockfile (shown with the build).
+const installed = (name: string): string | null => {
   try {
     const lock = JSON.parse(readFileSync(resolve(__dirname, 'package-lock.json'), 'utf8'))
-    return /[#/]([0-9a-f]{7})[0-9a-f]*$/.exec(lock.packages?.[`node_modules/${name}`]?.resolved ?? '')?.[1] ?? null
+    const version = lock.packages?.[`node_modules/${name}`]?.version
+    return typeof version === 'string' ? version : null
   } catch { return null }
 }
-const build = `${commit} (PeerPigeon ${pinned('peerpigeon') ?? '?'}, freertc ${pinned('freertc') ?? '?'}), ${builtAt}`
+const build = `${commit} (PeerPigeon ${installed('peerpigeon') ?? '?'}, freertc ${installed('freertc') ?? '?'}), ${builtAt}`
 
 export default defineConfig(({ command }) => ({
   // The dev server over https (a certificate of its own, accepted once in the browser): the crypto PeerPigeon,

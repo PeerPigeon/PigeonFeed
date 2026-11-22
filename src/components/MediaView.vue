@@ -35,7 +35,15 @@ const load = async () => {
   if (loading.value) return
   loading.value = true
   failed.value = ''
-  try { url.value = await mediaUrl(props.media, (d) => { done.value = d }) } catch (error) { failed.value = (error as Error).message } finally { loading.value = false }
+  // A page just opened may still be reaching the storage servers: a few more tries, a little apart,
+  // before saying the file can't be had.
+  let last: unknown = null
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt))
+    try { url.value = await mediaUrl(props.media, (d) => { done.value = d }); last = null; break } catch (error) { last = error }
+  }
+  if (last) failed.value = (last as Error).message
+  loading.value = false
 }
 onMounted(() => { if (props.media.kind === 'image') void load() })
 </script>

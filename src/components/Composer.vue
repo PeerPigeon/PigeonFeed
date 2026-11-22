@@ -7,7 +7,7 @@
     <!-- The post as it will look: the text, and under it the pictures and videos, in the same box. -->
     <div class="box" :class="{ filled: files.length }">
       <textarea
-        v-model="text" :rows="re ? 2 : 3" :maxlength="MAX_TEXT" :placeholder="re ? 'Write a reply' : 'What is happening?'"
+        ref="input" v-model="text" :rows="re ? 2 : 3" :maxlength="MAX_TEXT" :placeholder="re ? 'Write a reply' : 'What is happening?'"
         :aria-label="re ? 'Your reply' : 'Your post'" @keydown.enter.meta.prevent="send" @keydown.enter.ctrl.prevent="send"
         @paste="paste"
       ></textarea>
@@ -26,6 +26,8 @@
         <input type="file" accept="image/*,video/*" multiple :disabled="busy || files.length >= MAX_MEDIA" aria-label="Add a picture or video" @change="pick" />
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </label>
+      <button type="button" class="attach emoji-open" :class="{ off: busy }" :disabled="busy" title="Add an emoji" aria-label="Add an emoji" @mousedown.prevent @click="openEmoji">🙂</button>
+      <Teleport to="body"><EmojiPicker v-if="emojiOpen" @pick="insertEmoji" @close="closeEmoji" /></Teleport>
       <span class="count" :class="{ near: text.length > MAX_TEXT - 100 }">{{ text.length > MAX_TEXT - 200 ? MAX_TEXT - text.length : '' }}</span>
       <button class="btn btn-go" type="submit" :disabled="busy || (!text.trim() && !files.length)">{{ busy ? progress : (re ? 'Reply' : 'Post') }}</button>
     </div>
@@ -33,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { defineAsyncComponent, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { post } from '@/composables/useFeed'
 import { blobs } from '@/composables/useMesh'
 import { prepare, upload } from '@/utils/media'
@@ -47,6 +49,31 @@ const files = ref<File[]>([])
 const busy = ref(false)
 const progress = ref('Posting')
 const error = ref('')
+
+// Emoji: the picker (loaded the first time it opens) puts one where the cursor was in the text.
+const EmojiPicker = defineAsyncComponent(() => import('./EmojiPicker.vue'))
+const input = ref<HTMLTextAreaElement | null>(null)
+const emojiOpen = ref(false)
+let caret: [number, number] | null = null
+const openEmoji = () => {
+  const el = input.value
+  caret = el ? [el.selectionStart, el.selectionEnd] : null
+  emojiOpen.value = true
+}
+const closeEmoji = () => {
+  emojiOpen.value = false
+  void nextTick(() => input.value?.focus())
+}
+const insertEmoji = (emoji: string) => {
+  const [start, end] = caret ?? [text.value.length, text.value.length]
+  const next = text.value.slice(0, start) + emoji + text.value.slice(end)
+  if (next.length > MAX_TEXT) { closeEmoji(); return }
+  text.value = next
+  const at = start + emoji.length
+  caret = [at, at]
+  emojiOpen.value = false
+  void nextTick(() => { const el = input.value; if (el) { el.focus(); el.setSelectionRange(at, at) } })
+}
 
 // A preview (an object URL) for each file, made once per file and let go when it leaves.
 const urls = new Map<File, string>()
@@ -153,6 +180,8 @@ const send = async () => {
 .attach:hover:not(.off) { color: var(--sheen); background: var(--wing); }
 .attach svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .attach.off { opacity: 0.45; cursor: not-allowed; }
+.emoji-open { border: none; background: none; padding: 0; font-size: 1.3rem; line-height: 1; font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
+.emoji-open:focus-visible { outline: 2px solid var(--sheen); outline-offset: 2px; }
 .attach input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .attach:focus-within { outline: 2px solid var(--sheen); outline-offset: 2px; }
 .count { margin-left: auto; font-size: 0.8rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }

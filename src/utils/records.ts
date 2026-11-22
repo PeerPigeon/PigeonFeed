@@ -53,7 +53,7 @@ const rand = () => Math.random().toString(36).slice(2, 8).padEnd(6, '0')
 export const stamp = (now = Date.now()) => `${Math.floor(now).toString(36).padStart(9, '0')}-${rand()}`
 
 /** A signing key as it appears in keys: base64url halves joined by a dot. */
-const isSigner = (s: unknown): s is string => typeof s === 'string' && /^[\w-]{20,100}\.[\w-]{20,100}$/.test(s)
+export const isSigner = (s: unknown): s is string => typeof s === 'string' && /^[\w-]{20,100}\.[\w-]{20,100}$/.test(s)
 const HASH = /^[0-9a-f]{64}$/
 
 export const postKey = (now = Date.now()) => `${K.post}${stamp(now)}`

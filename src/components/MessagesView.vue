@@ -3,7 +3,7 @@
     <aside class="convs" aria-label="Conversations">
       <p v-if="!list.length" class="hint">No messages yet. Start one from the Friends page, or from the menu on someone's post.</p>
       <button v-for="c in list" :key="c.other" type="button" class="conv" :class="{ on: c.other === other }" @click="$emit('pick', c.other)">
-        <PersonMark :who="c.other" />
+        <PersonMark :who="c.other" :link="false" />
         <span class="conv-last">{{ c.last }}</span>
         <span v-if="c.unread" class="badge" :aria-label="`${c.unread} unread`">{{ c.unread }}</span>
       </button>

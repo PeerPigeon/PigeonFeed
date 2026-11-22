@@ -20,7 +20,7 @@
         <button class="nav-link" :class="{ on: view === 'messages' }" @click="go('messages')">
           Messages<span v-if="unread" class="badge" :aria-label="`${unread} unread`">{{ unread }}</span>
         </button>
-        <button class="nav-link nav-login" @click="showAccount = true; showMenu = false">{{ account ? account.alias : (guestName || 'You') }}</button>
+        <button class="nav-link nav-login" :class="{ on: view === 'profile' && route.who === signer }" @click="openOwnProfile">{{ account ? account.alias : (guestName || 'You') }}</button>
       </nav>
       <button
         type="button" class="theme-switch"
@@ -61,6 +61,10 @@
         <FriendsView @message="openMessages" />
       </section>
 
+      <section v-else-if="view === 'profile' && route.who" class="column">
+        <ProfileView :who="route.who" :now="now" @message="openMessages" @account="showAccount = true" />
+      </section>
+
       <section v-else class="wide">
         <MessagesView :other="chatWith" :now="now" @pick="(who) => (chatWith = who)" />
       </section>
@@ -81,6 +85,8 @@ import Composer from './components/Composer.vue'
 import FriendsView from './components/FriendsView.vue'
 import MessagesView from './components/MessagesView.vue'
 import PostCard from './components/PostCard.vue'
+import ProfileView from './components/ProfileView.vue'
+import { navigate, openProfile, useRoute, type View } from './composables/useRoute'
 import { startMesh, storage, useMesh } from './composables/useMesh'
 import { initIdentity, useIdentity } from './composables/useIdentity'
 import { publishProfile, startFeed, useFeed } from './composables/useFeed'
@@ -92,16 +98,19 @@ const { connected, starting, error: meshError, online, relay } = useMesh()
 const { account, signer } = useIdentity()
 const { loaded, posts, circle, unread, guestName } = useFeed()
 
-type View = 'feed' | 'friends' | 'messages'
-const view = ref<View>('feed')
+// The page showing is the address's (composables/useRoute.ts): Back and Forward move between them.
+const { route } = useRoute()
+const view = computed<View>(() => route.value.view)
 const showMenu = ref(false)
 const showAccount = ref(false)
 const scope = ref<'all' | 'friends'>('all')
 const limit = ref(50)
 const chatWith = ref<string | null>(null)
 
-const go = (next: View) => { view.value = next; showMenu.value = false; if (next !== 'messages') chatWith.value = null }
-const openMessages = (who: string) => { chatWith.value = who; view.value = 'messages'; showMenu.value = false }
+const go = (next: Exclude<View, 'profile'>) => { navigate({ view: next, who: null }); showMenu.value = false; if (next !== 'messages') chatWith.value = null }
+const openMessages = (who: string) => { chatWith.value = who; navigate({ view: 'messages', who: null }); showMenu.value = false }
+// "You": your own profile; until this page has keys, the sheet to pick a name or sign in.
+const openOwnProfile = () => { showMenu.value = false; if (signer.value) openProfile(signer.value); else showAccount.value = true }
 
 // The friends feed: friends' posts and this page's own.
 const all = computed(() => {

@@ -74,7 +74,7 @@ const NAME_KEY = 'pigeonfeed:name'
 const guestName = ref((() => { try { return localStorage.getItem(NAME_KEY) ?? '' } catch { return '' } })())
 const bio = ref((() => { try { return localStorage.getItem('pigeonfeed:bio') ?? '' } catch { return '' } })())
 
-const profileOf = (who: string): Profile | undefined => state.value.profiles.get(profileKey(who))
+export const profileOf = (who: string): Profile | undefined => state.value.profiles.get(profileKey(who))
 /** A person's name as shown: an account's name when it is theirs, else their own with a bit of their key. */
 export const nameOf = (who: string): string => {
   const p = profileOf(who)
@@ -170,6 +170,17 @@ export async function setLike(postKeyOf: string, on: boolean): Promise<void> {
 // ------------------------------------------------------------ friends
 
 const circle = computed(() => (signer.value ? friendsOf(signer.value, state.value.wants.values()) : { friends: [], requests: [], sent: [] }))
+/** Anyone's friends (both ways round), as their profile shows them. */
+export const friendsOfPerson = (who: string): string[] => friendsOf(who, state.value.wants.values()).friends
+
+/** One person's posts, newest first, and their replies (each with the post it answers, when it is here). */
+export function postsBy(who: string): { posts: Post[]; replies: { reply: Post; to: Post | null }[] } {
+  const mine = settled.value.filter((p) => p.signer === who)
+  return {
+    posts: mine.filter((p) => !p.re),
+    replies: mine.filter((p) => p.re).map((reply) => ({ reply, to: state.value.posts.get(reply.re!) ?? null })),
+  }
+}
 /** Everyone who has said who they are here, but this page: by name. */
 const people = computed(() => [...state.value.profiles.values()].filter((p) => p.signer !== signer.value && !muted.value.has(p.signer)).sort((a, b) => b.at - a.at))
 

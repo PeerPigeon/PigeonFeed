@@ -67,7 +67,7 @@
     </main>
 
     <footer v-if="view !== 'messages'" class="build-footer">
-      PigeonFeed {{ build }} · peer to peer on <a href="https://github.com/PeerPigeon/PeerPigeon" target="_blank" rel="noopener">PeerPigeon</a>{{ relay ? ` · relay ${relay}` : '' }}
+      PigeonFeed {{ build }} · peer to peer on <a href="https://github.com/PeerPigeon/PeerPigeon" target="_blank" rel="noopener">PeerPigeon</a>{{ relay ? ` · ${/relay/.test(relay) ? relay : `relay ${relay}`}` : '' }}
     </footer>
 
     <AccountSheet v-if="showAccount" @close="showAccount = false" />
